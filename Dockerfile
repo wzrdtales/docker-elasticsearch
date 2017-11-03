@@ -1,5 +1,5 @@
-FROM quay.io/pires/docker-jre:8u131_r2
-MAINTAINER pjpires@gmail.com
+FROM openjdk:8u141-jre
+MAINTAINER magic@wizardtales.com
 
 # Export HTTP & Transport
 EXPOSE 9200 9300
@@ -12,9 +12,9 @@ ENV ES_TARBALL_ASC "${DOWNLOAD_URL}/elasticsearch-${ES_VERSION}.tar.gz.asc"
 ENV GPG_KEY "46095ACC8548582C1A2699A9D27D666CD88E42B4"
 
 # Install Elasticsearch.
-RUN apk add --no-cache --update bash ca-certificates su-exec util-linux curl
-RUN apk add --no-cache -t .build-deps gnupg openssl \
-  && cd /tmp \
+RUN apt-get update && apt-get install build-essential uuid-runtime -y && cd /tmp \
+  && curl https://github.com/ncopa/su-exec/archive/v0.2.tar.gz -L | tar xz \
+  && cd su-exec-0.2 && make && cp su-exec /usr/bin/ && cd .. \
   && echo "===> Install Elasticsearch..." \
   && curl -o elasticsearch.tar.gz -Lskj "$ES_TARBAL"; \
 	if [ "$ES_TARBALL_ASC" ]; then \
@@ -27,7 +27,7 @@ RUN apk add --no-cache -t .build-deps gnupg openssl \
   tar -xf elasticsearch.tar.gz \
   && ls -lah \
   && mv elasticsearch-$ES_VERSION /elasticsearch \
-  && adduser -DH -s /sbin/nologin elasticsearch \
+  && adduser --disabled-password --gecos "" --no-create-home --shell /sbin/nologin elasticsearch \
   && echo "===> Creating Elasticsearch Paths..." \
   && for path in \
   	/elasticsearch/config \
@@ -38,7 +38,9 @@ RUN apk add --no-cache -t .build-deps gnupg openssl \
   chown -R elasticsearch:elasticsearch "$path"; \
   done \
   && rm -rf /tmp/* \
-  && apk del --purge .build-deps
+  && apt-get purge build-essential -y \
+  && apt-get autoremove -y \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ENV PATH /elasticsearch/bin:$PATH
 
